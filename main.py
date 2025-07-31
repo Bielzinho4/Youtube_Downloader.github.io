@@ -1,118 +1,86 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, ttk, messagebox
 import os
-from yt_dlp import YoutubeDL
+import yt_dlp
 
-def escolher_diretorio():
+def escolher_pasta():
     pasta = filedialog.askdirectory()
-    if pasta:
-        entrada_caminho.delete(0, tk.END)
-        entrada_caminho.insert(0, pasta)
+    caminho_var.set(pasta)
 
 def baixar_video():
-    url = entrada_url.get().strip()
-    qualidade = qualidade_var.get()
-    nome_arquivo = entrada_nome.get().strip()
-    caminho = entrada_caminho.get().strip()
+    url = entrada_link.get()
+    caminho = caminho_var.get()
+    resolucao = combo_resolucao.get()
+    nome_arquivo = entrada_nome.get()
 
-    if not url or not nome_arquivo or not caminho:
-        messagebox.showerror("Erro", "Preencha todos os campos.")
+    if not url or not caminho or not resolucao or not nome_arquivo:
+        messagebox.showerror("Erro", "Preencha todos os campos!")
         return
 
-    extensao = ""
-    ydl_opts = {}
-
-    if qualidade == "MP3 (áudio)":
-        extensao = "mp3"
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': os.path.join(caminho, nome_arquivo + '.%(ext)s'),
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'quiet': True,
-        }
-    elif qualidade == "MP4 480p":
-        extensao = "mp4"
-        ydl_opts = {
-            'format': 'bestvideo[height<=480]+bestaudio/best[height<=480]',
-            'outtmpl': os.path.join(caminho, nome_arquivo + '.%(ext)s'),
-            'merge_output_format': 'mp4',
-            'quiet': True,
-        }
-    elif qualidade == "MP4 720p":
-        extensao = "mp4"
-        ydl_opts = {
-            'format': 'bestvideo[height<=720]+bestaudio/best',
-            'outtmpl': os.path.join(caminho, nome_arquivo + '.%(ext)s'),
-            'merge_output_format': 'mp4',
-            'quiet': True,
-        }
-    elif qualidade == "MP4 1080p":
-        extensao = "mp4"
-        ydl_opts = {
-            'format': 'bestvideo[height<=1080]+bestaudio/best',
-            'outtmpl': os.path.join(caminho, nome_arquivo + '.%(ext)s'),
-            'merge_output_format': 'mp4',
-            'quiet': True,
-        }
-    elif qualidade == "GIF":
-        extensao = "gif"
-        ydl_opts = {
-            'format': 'mp4',
-            'outtmpl': os.path.join(caminho, nome_arquivo + '.mp4'),
-            'quiet': True,
-        }
+    opcoes = {
+        'format': f'bestvideo[height<={resolucao[:-1]}]+bestaudio/best[height<={resolucao[:-1]}]',
+        'outtmpl': os.path.join(caminho, f'{nome_arquivo}.%(ext)s')
+    }
 
     try:
-        with YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(opcoes) as ydl:
             ydl.download([url])
-        if qualidade == "GIF":
-            converter_para_gif(os.path.join(caminho, nome_arquivo + ".mp4"), os.path.join(caminho, nome_arquivo + ".gif"))
-        messagebox.showinfo("Sucesso", f"Download concluído como {nome_arquivo}.{extensao}")
+        messagebox.showinfo("Sucesso", "Download concluído!")
     except Exception as e:
-        messagebox.showerror("Erro no download", str(e))
+        messagebox.showerror("Erro", f"Falha no download:\n{str(e)}")
 
-def converter_para_gif(input_path, output_path):
-    import subprocess
-    try:
-        subprocess.run([
-            "ffmpeg", "-y", "-i", input_path,
-            "-vf", "fps=10,scale=320:-1:flags=lanczos",
-            "-loop", "0", output_path
-        ])
-        os.remove(input_path)
-    except Exception as e:
-        messagebox.showerror("Erro ao converter para GIF", str(e))
+# Função para centralizar a janela
+def centralizar_janela(window, largura, altura):
+    largura_tela = window.winfo_screenwidth()
+    altura_tela = window.winfo_screenheight()
+    x = (largura_tela - largura) // 2
+    y = (altura_tela - altura) // 2
+    window.geometry(f"{largura}x{altura}+{x}+{y}")
 
+# Janela principal
 janela = tk.Tk()
-janela.title("Downloader de Vídeos")
-janela.geometry("500x420")
+janela.title("Youtube Downloader")
+centralizar_janela(janela, 1280, 720)
+janela.configure(bg="#f0f0f0")
 
-tk.Label(janela, text="URL do vídeo:", font=("Arial", 12)).pack(pady=5)
-entrada_url = tk.Entry(janela, width=60)
-entrada_url.pack(pady=5)
+# Centralizar todos os elementos
+frame = tk.Frame(janela, bg="#f0f0f0")
+frame.pack(expand=True)
 
-tk.Label(janela, text="Qualidade:", font=("Arial", 12)).pack(pady=5)
-opcoes_qualidade = ["MP3 (áudio)", "MP4 480p", "MP4 720p", "MP4 1080p", "GIF"]
-qualidade_var = tk.StringVar()
-qualidade_var.set(opcoes_qualidade[0])
-menu_qualidade = tk.OptionMenu(janela, qualidade_var, *opcoes_qualidade)
-menu_qualidade.pack(pady=5)
+# Link do vídeo
+tk.Label(frame, text="Link do vídeo:", bg="#f0f0f0", font=("Arial", 10)).pack(pady=(10, 0))
+entrada_link = tk.Entry(frame, width=60)
+entrada_link.pack(pady=2)
 
-tk.Label(janela, text="Nome do arquivo:", font=("Arial", 12)).pack(pady=5)
-entrada_nome = tk.Entry(janela, width=60)
-entrada_nome.pack(pady=5)
+# Nome do arquivo
+tk.Label(frame, text="Nome do arquivo:", bg="#f0f0f0", font=("Arial", 10)).pack(pady=(10, 0))
+entrada_nome = tk.Entry(frame, width=60)
+entrada_nome.pack(pady=2)
 
-tk.Label(janela, text="Caminho para salvar:", font=("Arial", 12)).pack(pady=5)
-entrada_caminho = tk.Entry(janela, width=45)
-entrada_caminho.pack(side=tk.LEFT, padx=(20,0), pady=5)
-botao_escolher = tk.Button(janela, text="Escolher", command=escolher_diretorio)
-botao_escolher.pack(side=tk.LEFT, padx=10, pady=5)
+# Caminho para salvar
+tk.Label(frame, text="Caminho para salvar:", bg="#f0f0f0", font=("Arial", 10)).pack(pady=(10, 0))
+frame_caminho = tk.Frame(frame, bg="#f0f0f0")
+frame_caminho.pack(pady=2)
+caminho_var = tk.StringVar()
+entrada_caminho = tk.Entry(frame_caminho, textvariable=caminho_var, width=50)
+entrada_caminho.pack(side=tk.LEFT, padx=5)
+botao_pasta = tk.Button(frame_caminho, text="Escolher Pasta", command=escolher_pasta)
+botao_pasta.pack(side=tk.LEFT)
 
-botao_baixar = tk.Button(janela, text="Baixar", font=("Arial", 12), bg="green", fg="white", command=baixar_video)
-botao_baixar.pack(pady=20)
+# Resolução
+tk.Label(frame, text="Resolução:", bg="#f0f0f0", font=("Arial", 10)).pack(pady=(10, 0))
+combo_resolucao = ttk.Combobox(frame, values=["144p", "240p", "360p", "480p", "720p", "1080p", "1440p", "2160p"])
+combo_resolucao.current(4)
+combo_resolucao.pack(pady=2)
+
+# Botões
+frame_botoes = tk.Frame(frame, bg="#f0f0f0")
+frame_botoes.pack(pady=20)
+
+botao_baixar = tk.Button(frame_botoes, text="Baixar", bg="green", fg="white", width=10, command=baixar_video)
+botao_baixar.pack(side=tk.LEFT, padx=10)
+
+botao_sair = tk.Button(frame_botoes, text="Sair", bg="red", fg="white", width=10, command=janela.quit)
+botao_sair.pack(side=tk.LEFT, padx=10)
 
 janela.mainloop()
